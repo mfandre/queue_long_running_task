@@ -21,8 +21,8 @@ Python app that uses RabbitMQ to orchestration long running tasks execution
 - In another executes **python .\main.py kill_work** to create a consumer **KILL_WORK**
 - Open another prompt/terminal and open the folder hard_work_api
 - Executes **python .\main.py**
-- To create a new job press 1 + <enter>
-- To kill a job press 2 + <enter> and fill the job_id that you want to kill
+- To create a new job press 1 + enter
+- To kill a job press 2 + enter and fill the job_id that you want to kill
 
 # Important notes
 - If you will run it in a multiple servers you MUST change the db_manager to use another database instead of SQLite3!
