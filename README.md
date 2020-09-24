@@ -26,6 +26,6 @@ Python app that uses RabbitMQ to orchestration long running tasks execution
 
 # Important notes
 - If you will run it in a multiple servers you MUST change the db_manager to use another database instead of SQLite3!
-  - Consumer and Producer is running in the same machine that is the reason to SQLite works. If you want to use the consumer in another server you need to change the to another DB.
+  - Consumer and Producer is running in the same machine that is the reason to SQLite works. If you want to use the consumer in another server you need to change to another DB.
 - All my tests was on local machine with RabbitMQ running on Docker container
 - I'm a not specialist in python... so, the code is not the best...
