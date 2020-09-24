@@ -26,5 +26,5 @@ Python app that uses RabbitMQ to orchestration long running tasks execution
 
 # Important notes
 - If you will run it in a multiple servers you MUST change the db_manager to use another database instead of SQLite3!
-- All my tests is on local machine with RabbitMQ running on Docker container
+- All my tests was on local machine with RabbitMQ running on Docker container
 - I'm a not specialist in python... so, the code is not the best...
