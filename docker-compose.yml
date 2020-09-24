@@ -1,0 +1,30 @@
+version: '3.1'
+networks:
+        default:
+            driver: bridge
+            ipam:
+                config:
+                    - subnet: 10.30.0.0/16
+
+###
+# Apps
+###
+services:
+    rabbitmq:
+        image: rabbitmq:management
+        ports:
+            - 5672:5672
+            - 15672:15672
+        restart: always
+
+#    app-1:
+#        build: ./app_1
+#        ports:
+#            - 3000:3001
+#        restart: always
+#    
+#    app-2:
+#        build: ./app_2
+#        ports:
+#            - 3000:3002
+#        restart: always
