@@ -16,15 +16,91 @@ services:
             - 5672:5672
             - 15672:15672
         restart: always
+        networks:
+            - default
 
-#    app-1:
-#        build: ./app_1
-#        ports:
-#            - 3000:3001
-#        restart: always
-#    
-#    app-2:
-#        build: ./app_2
-#        ports:
-#            - 3000:3002
-#        restart: always
+    postgres:
+        image: postgres
+        environment:
+            "POSTGRES_USER": "postgres"
+            "POSTGRES_PASSWORD": "postgres"
+        ports:
+            - "5432:5432"
+        volumes:
+            - /volumes/postgres:/var/lib/postgresql/data 
+        restart: always
+        networks:
+            - default
+        
+    pgadmin:
+        image: dpage/pgadmin4
+        environment:
+            "PGADMIN_DEFAULT_EMAIL": "postgres@postgres"
+            "PGADMIN_DEFAULT_PASSWORD": "postgres"
+        ports:
+            - "3030:80"
+        depends_on:
+            - postgres
+        restart: always
+        networks:
+            - default
+    
+    worker1:
+        build: 
+            context: ./
+            dockerfile: ./hard_work_model/dockerfile
+        environment:
+            "DB_POSTGRES_DB": "postgres"
+            "DB_POSTGRES_USER": "postgres"
+            "DB_POSTGRES_PASS": "postgres"
+            "DB_POSTGRES_HOST": "postgres"
+            "DB_POSTGRES_PORT": 5432
+            "RABBITMQ_HOST": rabbitmq
+            "RABBITMQ_PORT": 5672
+        volumes:
+            - /volumes/worker:/usr/src/app/hard_work_model/logs
+        depends_on:
+            - postgres
+        restart: always
+        networks:
+            - default
+
+    worker2:
+        build: 
+            context: ./
+            dockerfile: ./hard_work_model/dockerfile
+        environment:
+            "DB_POSTGRES_DB": "postgres"
+            "DB_POSTGRES_USER": "postgres"
+            "DB_POSTGRES_PASS": "postgres"
+            "DB_POSTGRES_HOST": "postgres"
+            "DB_POSTGRES_PORT": 5432
+            "RABBITMQ_HOST": rabbitmq
+            "RABBITMQ_PORT": 5672
+        volumes:
+            - /volumes/worker:/usr/src/app/hard_work_model/logs
+        depends_on:
+            - postgres
+        restart: always
+        networks:
+            - default
+
+    worker3:
+        build: 
+            context: ./
+            dockerfile: ./hard_work_model/dockerfile
+        environment:
+            "DB_POSTGRES_DB": "postgres"
+            "DB_POSTGRES_USER": "postgres"
+            "DB_POSTGRES_PASS": "postgres"
+            "DB_POSTGRES_HOST": "postgres"
+            "DB_POSTGRES_PORT": 5432
+            "RABBITMQ_HOST": rabbitmq
+            "RABBITMQ_PORT": 5672
+        volumes:
+            - /volumes/worker:/usr/src/app/hard_work_model/logs
+        depends_on:
+            - postgres
+        restart: always
+        networks:
+            - default

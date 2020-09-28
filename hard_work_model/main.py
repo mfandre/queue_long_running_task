@@ -2,28 +2,45 @@ import pika
 import sys
 import os
 import time
+from datetime import datetime
 from random import randrange
 sys.path.append("..") # to fix sibling imports
 from db_manager import main
 from custom_exceptions import job_error
 from process_controller import process_killer, process_wrapper
+import platform
 
+def get_env(key):
+    try:
+        return os.environ[key]
+    except:
+        return None
+
+CURRENT_HOST = platform.node()
 DO_WORK_QUEUE_NAME = "hard_model_execution"
-KILL_WORK_QUEUE_NAME = "kill_hard_model_execution"
+KILL_WORK_QUEUE_NAME = "kill_hard_model_execution"+"_"+CURRENT_HOST.upper()
 QUEUE_SIZE = 100
+
+RABBITMQ_HOST = get_env('RABBITMQ_HOST') or 'localhost'
+RABBITMQ_PORT = get_env('RABBITMQ_PORT') or 5672
+
+print("RABBITMQ_HOST ==========> ", RABBITMQ_HOST)
+print("RABBITMQ_PORT ==========> ", RABBITMQ_PORT)
+print("CURRENT_HOST ==========> ", CURRENT_HOST)
 
 def change_job_status_to_error(id, error_msg, conn_and_cursor = None):
     try:
-        main.update_job_into_db(id, "ERROR", error_msg, None, conn_and_cursor)
+        error_msg = error_msg.replace("'","").replace("\"","")
+        main.update_job_into_db(id, "ERROR", error_msg, None, CURRENT_HOST, conn_and_cursor)
     except Exception as e:
-        print("fail to update job status", e)
+        print("fail to update job status ERROR", e)
         raise e
 
 def change_job_status_to_processing(id, conn_and_cursor = None):
     try:
-        main.update_job_into_db(id, "PROCESSING", "", None, conn_and_cursor)
+        main.update_job_into_db(id, "PROCESSING", "", None, CURRENT_HOST, conn_and_cursor)
     except Exception as e:
-        print("fail to update job status", e)
+        print("fail to update job status PROCESSING", e)
         raise e
 
 def change_job_status_to_finished(id, conn_and_cursor = None):
@@ -32,28 +49,29 @@ def change_job_status_to_finished(id, conn_and_cursor = None):
         #dont update if job is killed or canceled
         if(job_status == "KILLED" or job_status == "CANCELLED_BEFORE_EXECUTION"):
             return
-        main.update_job_into_db(id, "FINISHED", "", None, conn_and_cursor)
+
+        main.update_job_into_db(id, "FINISHED", "", None, CURRENT_HOST, conn_and_cursor)
     except Exception as e:
-        print("fail to update job status", e)
+        print("fail to update job status FINISHED", e)
         raise e
 
 def change_job_status_to_killed(id, conn_and_cursor = None):
     try:
-        main.update_job_into_db(id, "KILLED", "", None, conn_and_cursor)
+        main.update_job_into_db(id, "KILLED", "", None, CURRENT_HOST, conn_and_cursor)
     except Exception as e:
-        print("fail to update job status", e)
+        print("fail to update job status KILLED", e)
         raise e
 
 def change_job_status_to_cancelled_before_execution(id, conn_and_cursor = None):
     try:
-        main.update_job_into_db(id, "CANCELLED_BEFORE_EXECUTION", "", None, conn_and_cursor)
+        main.update_job_into_db(id, "CANCELLED_BEFORE_EXECUTION", "", None, "", "", conn_and_cursor)
     except Exception as e:
-        print("fail to update job status", e)
+        print("fail to update job status CANCELLED_BEFORE_EXECUTION", e)
         raise e
         
 def call_my_very_hard_work_process():
     start = time.time()
-    total_iterations = 800000000*10
+    total_iterations = 800000000*2
     for i in range(1,total_iterations):
         pass
         #if i%100000 == 0:
@@ -87,21 +105,25 @@ def do_work(ch, method, properties, body):
         #rand = randrange(100)
         #if rand < 90:
         #    raise Exception("Random error " + str(rand))
-
+        print("1")
         change_job_status_to_processing(job_id, conn_and_cursor)
         main.commit_transaction(conn_and_cursor) #its important to uptade soon as possible to "processing" state this why I commit
-
+        print("2")
         #call_my_very_hard_work_process() but in a separate process
         pw = process_wrapper.ProcessWrapper(call_my_very_hard_work_process)
         pw.execute()
         #print("================> pw.mainProcessPID", pw.mainProcessPID)
         #print("================> current pid", os.getpid())
-        main.update_job_pid_into_db(job_id, pw.mainProcessPID)
+        main.update_job_pid_into_db(job_id, pw.mainProcessPID, CURRENT_HOST)
         main.commit_transaction(conn_and_cursor)
-
+        print("3")
         pw.join()
 
+        today = datetime.now()
+        today_str = today.strftime("%m-%d-%Y %H:%M:%S")
+
         change_job_status_to_finished(job_id, conn_and_cursor)
+        main.update_job_end_execution_into_db(job_id, today_str, conn_and_cursor)
         main.commit_transaction(conn_and_cursor)
         #main.rollback_transaction(conn_and_cursor) # Just to test if rollback is working... it is!!!
         #ACK to remove the item from QUEUE
@@ -164,7 +186,7 @@ def cancelled(method_frame):
     print("cancelled", method_frame)
 
 def start_consumer(queue_name, callback):
-    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost', 5672, heartbeat=0)) #its important to turn off the hearbeat in the server look: https://stackoverflow.com/questions/14572020/handling-long-running-tasks-in-pika-rabbitmq
+    connection = pika.BlockingConnection(pika.ConnectionParameters(RABBITMQ_HOST, int(RABBITMQ_PORT), heartbeat=0)) #its important to turn off the hearbeat in the server look: https://stackoverflow.com/questions/14572020/handling-long-running-tasks-in-pika-rabbitmq
     channel = connection.channel()
     #channel.basic_qos(prefetch_count=1)
 
@@ -191,6 +213,8 @@ if __name__ == '__main__':
             print("Parameter consumer is required: kill_work or do_work)")
             force_quit()
         
+        print("CONSUMER =========================>", sys.argv[1])
+
         if sys.argv[1] == "do_work":
             start_consumer(DO_WORK_QUEUE_NAME, do_work)
         elif sys.argv[1] == "kill_work":
@@ -198,3 +222,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print('Interrupted')
         force_quit()
+    except Exception as e:
+        print('Big zica')
+        print(e)

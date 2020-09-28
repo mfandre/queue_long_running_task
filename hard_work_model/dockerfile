@@ -1,0 +1,14 @@
+FROM python:3
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+RUN apt-get update
+RUN apt-get install dos2unix
+RUN apt-get install -y supervisor
+WORKDIR /usr/src/app/
+
+COPY . .
+
+WORKDIR /usr/src/app/hard_work_model
+
+CMD ["/usr/bin/supervisord"]
