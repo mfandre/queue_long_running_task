@@ -204,7 +204,6 @@ def insert_job_into_db(job_id, conn_and_cursor = None):
 
     __insert_job(job_id, today_str, "ENQUEUE", "",conn_and_cursor)
 
-    return id
 
 def update_job_into_db(job_id, status, error_msg, pid, host, conn_and_cursor = None):
     today = datetime.now()
